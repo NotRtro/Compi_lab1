@@ -17,7 +17,8 @@ using namespace std;
 // Incluir estructura de datos que permita la busqueda de las palabras reservadas
 
 // Utilizamos un unordered_map para poder almacenar todas las palabras reservadas
-// 
+// Movemos El atributo "STATE" a public para poder actualizarlo en la funcion donde se desarrolla el ciclo del automata
+// Para la representacion del automata usamos un while con varios condicionales
 
 class Token {
 public:
@@ -53,6 +54,7 @@ std::ostream& operator << ( std::ostream& outs, const Token* tok ) {
   return outs << *tok;
 }
 
+template<>
 struct hash<Token>
 {
   size_t operator()(const Token &token) const
@@ -90,19 +92,16 @@ public:
   Scanner(const char* in_s);
   Token* nextToken();
   ~Scanner();  
-
+  int state;
   
 private:
   string input;
   int first, current;
-  int state;
   char nextChar();
   void rollBack();
   void startLexema();
   void incrStartLexema();
   string getLexema();
-  int SiteState();
-  void JumpState(int state);
 };
 
 
@@ -114,54 +113,58 @@ Token* Scanner::nextToken() {
   c = nextChar();
   while (c == ' ') c = nextChar();
   if (c =='\n') return new Token(Token::END)
-  JumpState(0);
+  this->state = 0;
   startLexema();
-  
+
   while(true){
-    switch (this->SiteState())
-    {
-    case 0:
-      if (isalpha(c)) setState(1);
-      else if (isdigit(c)) setState(4);
-      else if (c == '\n') setState(6);
+    if (this->state == 0){  
+      if (isalpha(c)) this->state = 1;
+      else if (isdigit(c)) this->state = 4;
+      else if (c == '\n') this->state = 6;
       else return new Token(Token::ERR);
       break;
-    
-    case 1:
+    }
+    else if(this->state == 1){
       c = nextChar();
-      if (isalpha(c) || isdigit(c) || c == '_') setState(1);
-      else if (c == ':') setState(3);
-      else setState(2);
+      if (isalpha(c) or isdigit(c) or c == '_') this->state = 1;
+      else if (c == ':') this->state = 3;
+      else this->state = 2;
       break;
-    case 2:
-      if (keywords.find(getLexema().substr(0,getLexema().size()-1)) != keywords.end())
-          token = &(keywords.find(getLexema().substr(0, getLexema().size() - 1))->second);
+    }
+    else if(this->state == 2){
+      if (values[this->getLexema()] != Token::ID)
+        token =  new Token(values[this->getLexema()]->second);
       else
         token =  new Token(Token::ID, getLexema());
       rollBack();
       return token;
-    case 3:
-      return new Token(Token::LABEL, getLexema().substr(0, getLexema().size() - 1));
-    case 4:
-      c = nextChar();
-      if (isdigit(c)) setState(4);
-      else setState(5);
+    }
+    else if(this->state == 3){
+      if (c == ':') return new Token(Token::LABEL, getLexema());
       break;
-    case 5:
+    }
+    else if(this->state == 4){
+      c = nextChar();
+      if (isdigit(c)) this->state = 4;
+      else this->state = 5;
+      break;
+    }
+    else if(this->state == 5){
       rollBack();
       return new Token(Token::NUM, getLexema());
-    case 6:
+    }
+    else if(this->state == 6){
       c = nextChar();
-      if (c == '\n') setState(6);
-      else setState(7);
+      if (c == '\n') this->state = 6;
+      else this->state = 7;
       break;
-    case 7:
+    }
+    else{
       rollBack();
       return new Token(Token::EOL);
-
+    }
     }
   }
-}
 
 Scanner::~Scanner() { }
 
@@ -189,15 +192,6 @@ void Scanner::incrStartLexema() {
 string Scanner::getLexema() {
   return input.substr(first,current-first);
 }
-
-int Scanner::SiteState(){
-  return state;
-}
-
-void Scanner::JumpState(int state){
-  this->state = state;
-}
-
 
 
 
