@@ -82,7 +82,7 @@ std::unordered_map<string, Token::Type> values = {
     {"div", Token::DIV},
     {"store", Token::STORE},
     {"load", Token::LOAD},
-    {"END", Token::END}
+    {"end", Token::END}
   };
 
 
